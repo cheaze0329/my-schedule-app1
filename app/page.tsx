@@ -9,7 +9,8 @@ interface UserResponse {
 
 export default function ScheduleApp() {
   // 1. 設定（時間を10:00〜22:00に拡張）
-  const dates = ['5/1 (金)', '5/2 (土)', '5/3 (日)', '5/4 (月)', '5/5 (火)'];
+  const dates = ['水曜', '木曜', '金曜', '土曜', '日曜', '月曜', '火曜'
+  ];
   const timeSlots = [
     '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', 
     '16:00', '17:00', '18:00', '19:00', '20:00', '21:00', '22:00'
@@ -114,11 +115,11 @@ export default function ScheduleApp() {
 
           {/* 入力フォーム */}
           <div className="bg-slate-50 p-6 sm:p-8 rounded-2xl border-2 border-indigo-100 shadow-inner">
-            <h2 className="text-xl font-bold mb-6 text-slate-700">✍️ あなたの予定を入力</h2>
+            <h2 className="text-xl font-bold mb-6 text-slate-700">予定を入力</h2>
             
             <input
               type="text"
-              placeholder="あなたの名前"
+              placeholder="氏名"
               className="w-full mb-8 p-4 text-lg border-2 border-slate-200 rounded-xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 outline-none transition-all"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
@@ -128,7 +129,7 @@ export default function ScheduleApp() {
               {dates.map((date) => (
                 <div key={date}>
                   <h3 className="font-bold text-indigo-600 mb-4 ml-1 flex items-center gap-2 border-b border-indigo-100 pb-2">
-                    📅 {date}
+                     {date}
                   </h3>
                   {/* グリッドを時間数に合わせてレスポンシブに調整 */}
                   <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-2 sm:gap-3">
@@ -159,7 +160,7 @@ export default function ScheduleApp() {
               onClick={addResponse}
               className="w-full mt-12 bg-indigo-600 text-white py-5 rounded-2xl font-bold text-xl hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all active:scale-[0.98] flex items-center justify-center gap-3"
             >
-              回答を送信する 🚀
+              回答を送信
             </button>
           </div>
         </div>
