@@ -97,11 +97,16 @@ export default function ScheduleApp() {
                       </button>
                       <span className="font-bold">{res.name}</span>
                     </td>
-                    {res.choices.map((choice, j) => (
-                      <td key={j} className={`p-2 text-center border-l ${choice === '○' ? 'text-green-500' : choice === '△' ? 'text-amber-500' : 'text-slate-300'}`}>
-                        {choice}
-                      </td>
-                    ))}
+                      {res.choices.map((choice, j) => (
+                        <td key={j} className={`p-2 text-center border-l font-bold ${
+                          choice === '○' ? 'bg-green-100 text-green-700' : 
+                          choice === '△' ? 'bg-yellow-100 text-yellow-700' : 
+                          choice === '×' ? 'bg-red-100 text-red-700' : 
+                          'bg-slate-50 text-slate-300'
+                        }`}>
+                          {choice}
+                        </td>
+                      ))}
                   </tr>
                 ))}
               </tbody>
