@@ -1,36 +1,61 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  'https://fsltbygsesvmifuucouv.supabase.co',
+  'sb_publishable_tR-2MI2LPfh4O9-rMCQyTA_EUYj937U'
+);
 
 interface UserResponse {
+  id?: string; // SupabaseのID
   name: string;
   choices: string[];
 }
 
 export default function ScheduleApp() {
-  // 1. 設定（時間を10:00〜22:00に拡張）
-  const dates = ['水曜', '木曜', '金曜', '土曜', '日曜', '月曜', '火曜'
-  ];
-  const timeSlots = [
-    '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', 
-    '16:00', '17:00', '18:00', '19:00', '20:00', '21:00', '22:00'
-  ];
+  const dates = ['水曜', '木曜', '金曜', '土曜', '日曜','月曜','火曜'];
+  const timeSlots = ['10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00', '22:00'];
   const allSlots = dates.flatMap(date => timeSlots.map(time => `${date} ${time}`));
 
-  // 2. 状態管理
   const [responses, setResponses] = useState<UserResponse[]>([]);
   const [newName, setNewName] = useState('');
-  const [newChoices, setNewChoices] = useState<string[]>(Array(allSlots.length).fill('○'));
+  const [newChoices, setNewChoices] = useState<string[]>(Array(allSlots.length).fill('×'));
 
-  // 回答追加
-  const addResponse = () => {
+  useEffect(() => {
+    fetchResponses();
+  }, []);
+
+  async function fetchResponses() {
+    const { data } = await supabase.from('schedule_responses').select('*').order('created_at', { ascending: true });
+    if (data) setResponses(data);
+  }
+
+  const addResponse = async () => {
     if (!newName) return alert("名前を入力してください");
-    setResponses([...responses, { name: newName, choices: newChoices }]);
-    setNewName('');
-    setNewChoices(Array(allSlots.length).fill('○'));
+    const { error } = await supabase.from('schedule_responses').insert([{ name: newName, choices: newChoices }]);
+    if (error) {
+      alert("保存失敗: " + error.message);
+      console.error(error); // ついでに裏側にも記録を残す
+    } else {
+      fetchResponses();
+      setNewName('');
+      setNewChoices(Array(allSlots.length).fill('×'));
+    }
   };
 
-  // 記号切り替え
+  // 【追加】削除機能
+  const deleteResponse = async (id: string) => {
+    if (!confirm("この回答を取り消しますか？")) return;
+    const { error } = await supabase.from('schedule_responses').delete().eq('id', id);
+    if (error) {
+      alert("削除に失敗しました");
+    } else {
+      fetchResponses();
+    }
+  };
+
   const toggleChoice = (index: number) => {
     const marks = ['○', '△', '×'];
     const currentMark = newChoices[index];
@@ -41,127 +66,76 @@ export default function ScheduleApp() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 py-10 px-2 sm:px-4 text-slate-800 font-sans">
-      <div className="max-w-6xl mx-auto bg-white shadow-2xl rounded-3xl overflow-hidden border border-slate-200">
-        <div className="bg-indigo-700 p-6 sm:p-8 text-white">
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-center tracking-tight">会議日程調整システム</h1>
-          <p className="text-indigo-200 text-center mt-2 text-sm sm:text-base">10:00〜22:00の予定を入力してください</p>
+    <div className="min-h-screen bg-slate-50 py-10 px-2 sm:px-4 text-slate-800">
+      <div className="max-w-6xl mx-auto bg-white shadow-2xl rounded-3xl overflow-hidden border">
+        <div className="bg-indigo-700 p-8 text-white text-center">
+          <h1 className="text-3xl font-extrabold">会議日程調整システム</h1>
         </div>
 
         <div className="p-4 sm:p-8">
-          {/* 集計セクション */}
-          <div className="overflow-x-auto mb-12 rounded-xl border border-slate-300 shadow-sm">
+          <div className="overflow-x-auto mb-12 rounded-xl border shadow-sm">
             <table className="w-full border-collapse text-sm">
               <thead>
-                {/* 1段目：日付 */}
                 <tr className="bg-slate-200">
-                  <th rowSpan={2} className="p-4 text-left border-b border-r border-slate-300 sticky left-0 bg-slate-200 z-20 w-32 font-bold text-slate-700 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
-                    参加者
-                  </th>
-                  {dates.map(date => (
-                    <th key={date} colSpan={timeSlots.length} className="p-2 text-center border-b border-l border-slate-300 font-bold text-slate-800 bg-slate-100 text-base">
-                      {date}
-                    </th>
-                  ))}
+                  <th rowSpan={2} className="p-4 border-r sticky left-0 bg-slate-200 z-20">操作 / 参加者</th>
+                  {dates.map(date => <th key={date} colSpan={timeSlots.length} className="p-2 border-b border-l font-bold">{date}</th>)}
                 </tr>
-                {/* 2段目：時間 */}
                 <tr className="bg-slate-50">
-                  {dates.map(date => (
-                    timeSlots.map(time => (
-                      <th key={`${date}-${time}`} className="p-2 text-center border-b border-l border-slate-200 min-w-[50px] text-xs font-bold text-slate-500">
-                        {time}
-                      </th>
-                    ))
-                  ))}
+                  {dates.map(date => timeSlots.map(time => <th key={`${date}-${time}`} className="p-1 border-b border-l text-[10px]">{time}</th>))}
                 </tr>
               </thead>
               <tbody>
-                {responses.length === 0 ? (
-                  <tr>
-                    <td colSpan={allSlots.length + 1} className="p-10 text-center text-slate-400">
-                      まだ回答がありません。下のフォームから入力してください。
+                {responses.map((res, i) => (
+                  <tr key={i} className="hover:bg-slate-50 border-b">
+                    <td className="p-2 sticky left-0 bg-white border-r z-10 flex items-center gap-2">
+                      {/* 削除ボタン */}
+                      <button 
+                        onClick={() => res.id && deleteResponse(res.id)}
+                        className="text-rose-500 hover:bg-rose-50 px-2 py-1 rounded text-xs border border-rose-200"
+                      >
+                        消去
+                      </button>
+                      <span className="font-bold">{res.name}</span>
                     </td>
-                  </tr>
-                ) : (
-                  responses.map((res, i) => (
-                    <tr key={i} className="hover:bg-slate-50 border-b border-slate-200">
-                      <td className="p-4 font-bold sticky left-0 bg-white shadow-[2px_0_5px_rgba(0,0,0,0.05)] text-slate-700 border-r border-slate-200 z-10">
-                        {res.name}
-                      </td>
-                      {res.choices.map((choice, j) => (
-                        <td key={j} className={`p-2 text-center text-lg sm:text-xl border-l border-slate-200 ${
-                          choice === '○' ? 'text-green-500 font-bold' : choice === '△' ? 'text-amber-500 font-bold' : 'text-rose-300'
-                        }`}>
-                          {choice}
-                        </td>
-                      ))}
-                    </tr>
-                  ))
-                )}
-                {/* 合計行 */}
-                {responses.length > 0 && (
-                  <tr className="bg-indigo-50 font-black">
-                    <td className="p-4 sticky left-0 bg-indigo-50 text-indigo-900 font-bold border-r border-slate-300 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">合計 (○)</td>
-                    {allSlots.map((_, j) => (
-                      <td key={j} className="p-2 text-center text-indigo-700 border-l border-slate-300 text-lg">
-                        {responses.filter(r => r.choices[j] === '○').length}
+                    {res.choices.map((choice, j) => (
+                      <td key={j} className={`p-2 text-center border-l ${choice === '○' ? 'text-green-500' : choice === '△' ? 'text-amber-500' : 'text-slate-300'}`}>
+                        {choice}
                       </td>
                     ))}
                   </tr>
-                )}
+                ))}
               </tbody>
             </table>
           </div>
 
-          {/* 入力フォーム */}
-          <div className="bg-slate-50 p-6 sm:p-8 rounded-2xl border-2 border-indigo-100 shadow-inner">
-            <h2 className="text-xl font-bold mb-6 text-slate-700">予定を入力</h2>
-            
-            <input
+          {/* 入力フォーム部分は前回と同じ */}
+          <div className="bg-slate-50 p-6 rounded-2xl border-2 border-indigo-100">
+             {/* ...前回のフォームのコード... */}
+             <input
               type="text"
               placeholder="氏名"
-              className="w-full mb-8 p-4 text-lg border-2 border-slate-200 rounded-xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 outline-none transition-all"
+              className="w-full mb-6 p-4 border rounded-xl"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
             />
-
-            <div className="space-y-10">
-              {dates.map((date) => (
-                <div key={date}>
-                  <h3 className="font-bold text-indigo-600 mb-4 ml-1 flex items-center gap-2 border-b border-indigo-100 pb-2">
-                     {date}
-                  </h3>
-                  {/* グリッドを時間数に合わせてレスポンシブに調整 */}
-                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-2 sm:gap-3">
-                    {timeSlots.map((time) => {
-                      const overallIdx = allSlots.indexOf(`${date} ${time}`);
-                      return (
-                        <button
-                          key={time}
-                          type="button"
-                          onClick={() => toggleChoice(overallIdx)}
-                          className={`py-3 px-2 rounded-xl border-2 transition-all active:scale-90 flex flex-col items-center gap-1 shadow-sm hover:shadow-md ${
-                            newChoices[overallIdx] === '○' ? 'bg-white border-green-500 text-green-600' :
-                            newChoices[overallIdx] === '△' ? 'bg-white border-amber-500 text-amber-600' :
-                            'bg-slate-100 border-slate-300 text-slate-400 opacity-70'
-                          }`}
-                        >
-                          <span className="text-xs sm:text-sm font-bold">{time}</span>
-                          <span className="text-2xl sm:text-3xl leading-none">{newChoices[overallIdx]}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
+            {/* 日付ごとのボタン選択UI */}
+            {dates.map(date => (
+              <div key={date} className="mb-6">
+                <h3 className="font-bold mb-3"> {date}</h3>
+                <div className="flex flex-wrap gap-2">
+                  {timeSlots.map(time => {
+                    const idx = allSlots.indexOf(`${date} ${time}`);
+                    return (
+                      <button key={time} onClick={() => toggleChoice(idx)} className="p-2 border rounded-lg bg-white w-16">
+                        <div className="text-[10px] text-slate-400">{time}</div>
+                        <div className="text-lg font-bold">{newChoices[idx]}</div>
+                      </button>
+                    );
+                  })}
                 </div>
-              ))}
-            </div>
-
-            <button
-              onClick={addResponse}
-              className="w-full mt-12 bg-indigo-600 text-white py-5 rounded-2xl font-bold text-xl hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all active:scale-[0.98] flex items-center justify-center gap-3"
-            >
-              回答を送信
-            </button>
+              </div>
+            ))}
+            <button onClick={addResponse} className="w-full bg-indigo-600 text-white py-4 rounded-xl font-bold">送信して保存する </button>
           </div>
         </div>
       </div>
